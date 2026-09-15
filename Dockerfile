@@ -13,11 +13,13 @@ WORKDIR /app
 RUN apt-get update \
     && apt-get upgrade -y \
     && rm -rf /var/lib/apt/lists/* \
-    && python -m pip install --no-cache-dir --upgrade "setuptools>=78.1.1" \
+    && python -m pip install --no-cache-dir --upgrade "msgpack>=1.2.1" "setuptools>=78.1.1" \
+    && rm -f /usr/local/lib/python*/ensurepip/_bundled/setuptools-*.whl \
     && groupadd --gid 10001 gateway \
     && useradd --uid 10001 --gid gateway --no-create-home gateway
 COPY --from=builder --chown=10001:10001 /app/.venv /app/.venv
 COPY --chown=10001:10001 config /app/config
+RUN /app/.venv/bin/python -m pip install --no-cache-dir --upgrade "msgpack>=1.2.1" "setuptools>=78.1.1"
 USER 10001:10001
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
