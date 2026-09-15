@@ -1,0 +1,26 @@
+# Fictional, loopback-only demonstration. For production see config/enterprise.example.toml.
+development = true
+requests_per_minute = 60
+max_concurrency = 16
+timeout_seconds = 10
+max_response_bytes = 262144
+
+[[sites]]
+name = "catalog"
+base_url = "http://127.0.0.1:8000"
+approved = true
+allowed_networks = ["127.0.0.1/32"]
+
+[[sites.operations]]
+name = "search"
+path = "/demo/products"
+description = "Search the fictional equipment catalog by name."
+query_params = ["q"]
+fields = ["id", "name", "price", "currency", "stock"]
+max_items = 20
+
+[[sites.operations]]
+name = "handbook"
+path = "/demo/handbook"
+description = "Read the fictional procurement handbook as plain text."
+response_format = "text"

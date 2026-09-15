@@ -1,0 +1,25 @@
+# Copy to config/local.toml; replace the origin, CIDR, paths, and projections.
+# Configuration is controlled by operators and should go through code review.
+development = false
+timeout_seconds = 10
+max_response_bytes = 262144
+max_concurrency = 16
+requests_per_minute = 60
+
+[[sites]]
+name = "inventory"
+base_url = "https://inventory.corp.example"
+approved = true
+allowed_networks = ["10.42.16.0/24"]
+credential_env = "INVENTORY_AUTHORIZATION"
+credential_header = "Authorization"
+# Mount a PEM trust bundle containing your corporate CA. Never disable TLS verification.
+# ca_bundle = "/run/secrets/corporate-ca.pem"
+
+[[sites.operations]]
+name = "search"
+path = "/api/assets"
+description = "Search the approved inventory dataset."
+query_params = ["q", "page"]
+fields = ["id", "name", "status"]
+max_items = 50

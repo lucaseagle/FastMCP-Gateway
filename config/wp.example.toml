@@ -1,0 +1,17 @@
+# Public homepage only; no browser cookies or upstream credentials.
+development = false
+timeout_seconds = 15
+# The homepage exceeded the default 256 KiB during the live smoke test.
+max_response_bytes = 524288
+requests_per_minute = 10
+
+[[sites]]
+name = "wp"
+base_url = "https://www.wp.pl"
+approved = true
+
+[[sites.operations]]
+name = "homepage"
+path = "/"
+description = "Read public text from the WP.pl homepage; output may include navigation."
+response_format = "text"

@@ -1,0 +1,10 @@
+*
+!pyproject.toml
+!uv.lock
+!README.md
+!src/
+!src/**
+!config/
+!config/gateway.toml
+!config/enterprise.example.toml
+src/**/__pycache__/

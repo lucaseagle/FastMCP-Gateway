@@ -1,0 +1,49 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fastmcp-gateway"
+version = "0.1.0"
+description = "Policy-driven MCP and CLI access to approved website endpoints, including private networks."
+readme = "README.md"
+requires-python = ">=3.12,<3.15"
+license = "MIT"
+dependencies = [
+  "fastmcp>=3.0,<4", "aiohttp>=3.13,<4", "pydantic>=2.12,<3",
+  "pydantic-settings>=2.12,<3", "fastapi>=0.120,<1", "uvicorn>=0.38,<1",
+  "opentelemetry-sdk>=1.38,<2", "opentelemetry-exporter-otlp-proto-http>=1.38,<2",
+  "python-dotenv>=1.2,<2",
+]
+
+[project.optional-dependencies]
+agent = ["langgraph>=1.0,<2", "boto3>=1.40,<2"]
+
+[project.scripts]
+fastmcp-gateway = "fastmcp_gateway.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=9,<10", "pytest-asyncio>=1,<2", "pytest-cov>=7,<8", "ruff>=0.14,<1", "mypy>=1.19,<2", "bandit[toml]>=1.9,<2", "pip-audit>=2.9,<3", "httpx>=0.28,<1", "pyjwt[crypto]>=2.10,<3"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fastmcp_gateway"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src"]
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv", ".tools", ".agents"]

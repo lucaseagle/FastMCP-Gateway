@@ -1,0 +1,60 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.12', '3.13']
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+        with:
+          version: '0.12.14'
+          python-version: ${{ matrix.python }}
+          enable-cache: true
+      - run: uv sync --frozen --extra agent
+      - run: uv run ruff check src tests examples scripts
+      - run: uv run ruff format --check src tests examples scripts
+      - run: uv run mypy src
+      - run: uv run bandit -r src -q
+      - run: uv run pytest --cov=fastmcp_gateway --cov-report=xml --cov-fail-under=85
+      - run: uv run pip-audit --skip-editable
+      - run: uv build
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: reports-python-${{ matrix.python }}
+          path: |
+            coverage.xml
+            dist/*
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: docker build --target runtime -t fastmcp-gateway:ci .
+      - uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          image-ref: fastmcp-gateway:ci
+          exit-code: '1'
+          severity: CRITICAL,HIGH
+          ignore-unfixed: false
+      - name: Container health and non-root smoke test
+        run: |
+          token="$(openssl rand -hex 32)"
+          docker run -d --name gateway --read-only --cap-drop ALL --security-opt no-new-privileges --tmpfs /tmp -p 127.0.0.1:8000:8000 -e GATEWAY_MODE=development -e GATEWAY_TOKEN="$token" fastmcp-gateway:ci demo
+          for i in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8000/healthz; then break; fi
+            sleep 1
+          done
+          curl --fail http://127.0.0.1:8000/healthz
+          test "$(docker exec gateway id -u)" = 10001
+          docker stop gateway

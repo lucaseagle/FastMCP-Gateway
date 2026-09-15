@@ -1,0 +1,82 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: FastMCP Gateway - stateless MCP on Lambda and API Gateway with JWT authorization
+Parameters:
+  ImageUri:
+    Type: String
+    Description: ECR image URI built from Dockerfile target lambda, preferably pinned by digest
+  Issuer:
+    Type: String
+    AllowedPattern: 'https://.+'
+  Audience:
+    Type: String
+  JwksUri:
+    Type: String
+    AllowedPattern: 'https://.+'
+  GatewayHostname:
+    Type: String
+    Description: Approved custom domain configured on API Gateway separately
+  UpstreamSecretArn:
+    Type: String
+    Description: Secrets Manager secret with an authorization JSON key; resolved during deployment
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Private subnets with routes to approved upstreams and identity provider
+  SecurityGroupIds:
+    Type: List<AWS::EC2::SecurityGroup::Id>
+    Description: Security groups with tightly scoped egress; provisioned by the network owner
+Resources:
+  Api:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: '$default'
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 20
+        ThrottlingRateLimit: 10
+      Auth:
+        DefaultAuthorizer: EnterpriseJWT
+        Authorizers:
+          EnterpriseJWT:
+            IdentitySource: '$request.header.Authorization'
+            JwtConfiguration:
+              issuer: !Ref Issuer
+              audience: [!Ref Audience]
+  Gateway:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Image
+      ImageUri: !Ref ImageUri
+      Architectures: [x86_64]
+      MemorySize: 512
+      Timeout: 28
+      ReservedConcurrentExecutions: 10
+      Environment:
+        Variables:
+          GATEWAY_MODE: production
+          GATEWAY_CONFIG: /app/config/enterprise.example.toml
+          GATEWAY_JWKS_URI: !Ref JwksUri
+          GATEWAY_ISSUER: !Ref Issuer
+          GATEWAY_AUDIENCE: !Ref Audience
+          INVENTORY_AUTHORIZATION: !Sub '{{resolve:secretsmanager:${UpstreamSecretArn}:SecretString:authorization}}'
+          GATEWAY_ALLOWED_HOSTS: !Sub '["${GatewayHostname}","${Api}.execute-api.${AWS::Region}.amazonaws.com","127.0.0.1","localhost"]'
+      VpcConfig:
+        SubnetIds: !Ref SubnetIds
+        SecurityGroupIds: !Ref SecurityGroupIds
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSLambdaVPCAccessExecutionRole
+      Events:
+        MCP:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref Api
+            Path: /mcp
+            Method: POST
+  GatewayLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${Gateway}'
+      RetentionInDays: 30
+Outputs:
+  McpUrl:
+    Value: !Sub 'https://${Api}.execute-api.${AWS::Region}.amazonaws.com/mcp'
