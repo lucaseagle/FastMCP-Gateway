@@ -4,7 +4,8 @@ ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 WORKDIR /app
 COPY pyproject.toml uv.lock README.md ./
 COPY src ./src
-RUN uv sync --frozen --no-dev --no-editable
+RUN uv sync --frozen --no-dev --no-editable \
+    && uv pip install --python /app/.venv/bin/python "msgpack>=1.2.1" "setuptools>=78.1.1"
 
 FROM python:3.13-slim-trixie@sha256:9d2e5553305c7c7b0097999bb17187c69b921ccd6bc9d40e4bb5ebe652c00285 AS runtime
 ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 PATH="/app/.venv/bin:$PATH" \
@@ -19,7 +20,6 @@ RUN apt-get update \
     && useradd --uid 10001 --gid gateway --no-create-home gateway
 COPY --from=builder --chown=10001:10001 /app/.venv /app/.venv
 COPY --chown=10001:10001 config /app/config
-RUN /app/.venv/bin/python -m pip install --no-cache-dir --upgrade "msgpack>=1.2.1" "setuptools>=78.1.1"
 USER 10001:10001
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
