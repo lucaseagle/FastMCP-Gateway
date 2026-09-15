@@ -10,7 +10,11 @@ FROM python:3.12.14-slim-bookworm@sha256:782412e85d0f0984994c290652577d4018aff08
 ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 PATH="/app/.venv/bin:$PATH" \
     GATEWAY_HOST=0.0.0.0
 WORKDIR /app
-RUN groupadd --gid 10001 gateway && useradd --uid 10001 --gid gateway --no-create-home gateway
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --gid 10001 gateway \
+    && useradd --uid 10001 --gid gateway --no-create-home gateway
 COPY --from=builder --chown=10001:10001 /app/.venv /app/.venv
 COPY --chown=10001:10001 config /app/config
 USER 10001:10001
