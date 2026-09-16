@@ -1,2 +1,1 @@
-# Debian trixie has no fixed version; reassess when a patched package is published.
-CVE-2026-76642
+# Intentionally empty: security exceptions require documented risk acceptance.
