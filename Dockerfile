@@ -1,4 +1,4 @@
-FROM python:3.12.14-slim-bookworm@sha256:782412e85d0f0984994c290652577d4018aff08145c85b262bb63dc0c7522254 AS builder
+FROM python:3.13-alpine@sha256:7415fbc3c9e4979cc717d92377ab2bc7b2b4a2af1ac03cc52b5f3f88efedaf3a AS builder
 COPY --from=ghcr.io/astral-sh/uv:0.12.14@sha256:1946145b8706ad9e5c0e79a513f9e324b58d5e38126bb2c8b7dbfca61febeb45 /uv /usr/local/bin/uv
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 WORKDIR /app
@@ -6,11 +6,17 @@ COPY pyproject.toml uv.lock README.md ./
 COPY src ./src
 RUN uv sync --frozen --no-dev --no-editable
 
-FROM python:3.12.14-slim-bookworm@sha256:782412e85d0f0984994c290652577d4018aff08145c85b262bb63dc0c7522254 AS runtime
+FROM python:3.13-alpine@sha256:7415fbc3c9e4979cc717d92377ab2bc7b2b4a2af1ac03cc52b5f3f88efedaf3a AS runtime
 ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 PATH="/app/.venv/bin:$PATH" \
     GATEWAY_HOST=0.0.0.0
 WORKDIR /app
-RUN groupadd --gid 10001 gateway && useradd --uid 10001 --gid gateway --no-create-home gateway
+RUN apk upgrade --no-cache \
+    && rm -rf /usr/local/lib/python*/site-packages/pip* \
+        /usr/local/lib/python*/site-packages/setuptools* \
+        /usr/local/lib/python*/ensurepip \
+        /usr/local/bin/pip* \
+    && addgroup -g 10001 -S gateway \
+    && adduser -u 10001 -S -D -H -G gateway gateway
 COPY --from=builder --chown=10001:10001 /app/.venv /app/.venv
 COPY --chown=10001:10001 config /app/config
 USER 10001:10001

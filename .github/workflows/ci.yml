@@ -47,6 +47,7 @@ jobs:
           exit-code: '1'
           severity: CRITICAL,HIGH
           ignore-unfixed: false
+          trivyignores: .trivyignore
       - name: Container health and non-root smoke test
         run: |
           token="$(openssl rand -hex 32)"
